@@ -4,6 +4,7 @@
 #include <iostream>
 #include "ArialFont.h"
 #include "color_palettes.h"
+#include <math.h> 
 using namespace std;
 using namespace sf;
 
@@ -16,29 +17,44 @@ struct Limits {
 	double max_imaginary_y;
 };
 
-void renderMandelbrot(Image& img, Limits& limits, double& sum_of_iterations, vector<Color> colors, int max_iterations, bool show_sys_info);
-void screen_zoom(tuple<int, int> cursor_pos, double factor, Limits& limits, bool zoom_center);
+enum FractalTypes {
+	MANDELBROT = 1,
+	BURNING_SHIP,
+	TRICORN,
+	MANDELBROT_TRICORN_ANIMATION
+};
+
+// Constants
+const auto aspect_ratio = 16.0 / 9.0;
+const int img_width = 1000;
+const int img_height = static_cast<int>(img_width / aspect_ratio);
+
+// UI Settings
+const float zoom_factor = 1.5;
+const float move_factor = 0.05;
+bool show_sys_info = true;
+bool zoom_center = false;
+
+// Fractal Settings
+int max_iterations = 32;
+int num_of_colors = 2;
+FractalTypes fractal_type = MANDELBROT;
+
+
+Limits limits = { img_width, img_height, -2.5, 1, -1, 1 };
+
+void renderFractal(Image& img, double& sum_of_iterations, vector<Color> colors, int time);
+void screen_zoom(tuple<int, int> cursor_pos, double factor, bool zoom_center);
 Color linear_interpolation(const Color& v, const Color& u, double a);
 
 int main()
 {
 	srand(time(NULL));
-	const auto aspect_ratio = 16.0 / 9.0;
-	const int img_width = 1920;
-	const int img_height = static_cast<int>(img_width / aspect_ratio);
-
-	int max_iterations = 32;
-	double zoom_factor = 1.5;
-	double move_factor = 0.05;
-	int num_of_colors = 3;
 	vector<Color> colors = getRandomColors(num_of_colors);
 
 	double zoom_val = 1;
 	double sum_of_iterations = 0;
-	bool show_sys_info = true;
-	bool zoom_center = false;
-	double startoff_factor = 1.2;
-	Limits limits = {img_width, img_height, -2.5 * startoff_factor, 1 * startoff_factor, -1 * startoff_factor, 1 * startoff_factor };
+	double time = 0;
 
 	Image img;
 	Texture texture;
@@ -100,10 +116,10 @@ int main()
 				if (event.key.code == Keyboard::R) {
 					max_iterations = 32;
 					zoom_val = 1;
-					limits.min_real_x = -2.5 * startoff_factor;
-					limits.max_real_x = 1 * startoff_factor;
-					limits.min_im_y = -1 * startoff_factor;
-					limits.max_imaginary_y = 1 * startoff_factor;
+					limits.min_real_x = -2.5;
+					limits.max_real_x = 1;
+					limits.min_im_y = -1;
+					limits.max_imaginary_y = 1;
 				}
 
 				// Toggle System Info
@@ -111,7 +127,20 @@ int main()
 					show_sys_info = !show_sys_info;
 					text.setString("");
 				}
-				
+
+				// Switch between different fractals
+				if (event.key.code == Keyboard::Num1) {
+					fractal_type = MANDELBROT;
+				}
+				if (event.key.code == Keyboard::Num2) {
+					fractal_type = BURNING_SHIP;
+				}
+				if (event.key.code == Keyboard::Num3) {
+					fractal_type = TRICORN;
+				}
+				if (event.key.code == Keyboard::Num4) {
+					fractal_type = MANDELBROT_TRICORN_ANIMATION;
+				}
 			}
 
 			if (event.type == Event::MouseButtonPressed) {
@@ -135,11 +164,11 @@ int main()
 					if (event.mouseWheelScroll.wheel == Mouse::VerticalWheel)
 					{
 						if (event.mouseWheelScroll.delta > 0) {
-							screen_zoom({ event.mouseWheelScroll.x, event.mouseWheelScroll.y }, zoom_factor, limits, zoom_center);
+							screen_zoom({ event.mouseWheelScroll.x, event.mouseWheelScroll.y }, zoom_factor, zoom_center);
 							zoom_val *= zoom_factor;
 						}
 						else {
-							screen_zoom({ event.mouseWheelScroll.x, event.mouseWheelScroll.y }, 1/zoom_factor, limits, zoom_center);
+							screen_zoom({ event.mouseWheelScroll.x, event.mouseWheelScroll.y }, 1/zoom_factor, zoom_center);
 							zoom_val /= zoom_factor;
 						}
 					}
@@ -147,7 +176,7 @@ int main()
 			}
 		}
 		window.clear();
-		renderMandelbrot(img, limits, sum_of_iterations, colors, max_iterations, show_sys_info);
+		renderFractal(img, sum_of_iterations, colors, time);
 		texture.loadFromImage(img);
 		sprite.setTexture(texture);
 		window.draw(sprite);
@@ -167,27 +196,46 @@ int main()
 		}
 		window.draw(text);
 		window.display();
+		time += 0.1;
 	}
 	return 0;
 }
 
 // Renders the Mandelbrot Set onto an image.
-void renderMandelbrot(Image& img, Limits& limits, double& sum_of_iterations, vector<Color> colors, int max_iterations, bool show_sys_info) {
+void renderFractal(Image& img, double& sum_of_iterations, vector<Color> colors, int frames_since_beginning) {
 #pragma omp parallel for
 	for (int y = 0; y < limits.img_height; y++) {
 		for (int x = 0; x < limits.img_width; x++) {
 			double x0 = limits.min_real_x + (limits.max_real_x - limits.min_real_x) * x / limits.img_width;
 			double y0 = limits.min_im_y + (limits.max_imaginary_y - limits.min_im_y) * y / limits.img_height;
-			double re = 0;
-			double im = 0;
+			double re = 0, im = 0, tmp;
 			int current_iteration = 0;
 			for (current_iteration; current_iteration < max_iterations; current_iteration++) {
-				double tr = re * re - im * im + x0;
-				im = 2 * re * im + y0;
-				re = tr;
+				switch (fractal_type)
+				{
+				case MANDELBROT:
+					tmp = re * re - im * im + x0;
+					im = 2.0 * re * im + y0;
+					re = tmp;
+					break;
+				case BURNING_SHIP:
+					tmp = re * re - im * im + x0;
+					im = 2.0 * std::abs(re * im) + y0;
+					re = tmp;
+					break;
+				case TRICORN:
+					tmp = re * re - im * im + x0;
+					im = -2 * re * im + y0;
+					re = tmp;
+					break;
+				case MANDELBROT_TRICORN_ANIMATION:
+					tmp = re * re - im * im * cos(frames_since_beginning) + x0;
+					im = 2*sin(frames_since_beginning) * re * im + y0;
+					re = tmp;
+					break;
+				}
 				if (re * re + im * im > 2.0 * 2.0) {
-					if (show_sys_info)
-						sum_of_iterations += current_iteration;
+					sum_of_iterations += current_iteration;
 					break;
 				}
 			}
@@ -206,13 +254,13 @@ void renderMandelbrot(Image& img, Limits& limits, double& sum_of_iterations, vec
 	}
 }
 // Function zooms into the Mandelbrot set either following the cursor or in the center.
-void screen_zoom(tuple<int, int> cursor_pos, double factor, Limits& limits, bool zoom_center)
+void screen_zoom(tuple<int, int> cursor_pos, double factor, bool zoom_center)
 {
 	double zoom_to_x = 0;
 	double zoom_to_y = 0;
 	if (zoom_center) {
-		zoom_to_x = limits.min_real_x + (limits.max_real_x - limits.min_real_x) * (limits.img_width / 2) / limits.img_width;
-		zoom_to_y = limits.min_im_y + (limits.max_imaginary_y - limits.min_im_y) * (limits.img_height / 2) / limits.img_height;
+		zoom_to_x = limits.min_real_x + (limits.max_real_x - limits.min_real_x) * (limits.img_width / 2.0) / limits.img_width;
+		zoom_to_y = limits.min_im_y + (limits.max_imaginary_y - limits.min_im_y) * (limits.img_height / 2.0) / limits.img_height;
 		}
 	else {
 		zoom_to_x = limits.min_real_x + (limits.max_real_x - limits.min_real_x) * get<0>(cursor_pos) / limits.img_width;
