@@ -156,7 +156,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ArialFont.h" />
-    <ClInclude Include="color_palettes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp" />

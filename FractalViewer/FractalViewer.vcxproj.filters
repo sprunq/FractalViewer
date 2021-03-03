@@ -16,10 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ArialFont.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="color_palettes.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
