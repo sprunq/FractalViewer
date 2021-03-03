@@ -2,12 +2,12 @@
 A CPU based Fractal viewer with Open MP in C++ and SFML.
 ## Fractals
 - Mandelbrot Set 
-<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/Mandelbrot.png" alt="Mandelbrot" width="400"/>
+<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/Mandelbrot.png" alt="Mandelbrot"/>
 - Tricorn 
-<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/Tricorn.png" alt="Tricorn" width="400"/>
+<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/Tricorn.png" alt="Tricorn"/>
 - Burning Ship
-<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/BurningShip_L.png" alt="Mandelbrot" width="400"/>
-<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/BurningShip_S.png" alt="Mandelbrot" width="400"/>
+<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/BurningShip_L.png" alt="Mandelbrot"/>
+<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/BurningShip_S.png" alt="Mandelbrot"/>
 
 ## Functions:
 - Zoom
@@ -17,7 +17,7 @@ A CPU based Fractal viewer with Open MP in C++ and SFML.
 - Screenshots
 - Animations
 
-<img src="https://github.com/sprunq/FractalViewer/blob/097bfb1727ef968665d0878ef2c4d03090918985/Images/Gifs/MandelbrotZoom.gif" alt="Mandelbrot Zoom" width="400"/>
+<img src="https://github.com/sprunq/FractalViewer/blob/097bfb1727ef968665d0878ef2c4d03090918985/Images/Gifs/MandelbrotZoom.gif" alt="Mandelbrot Zoom"/>
 
 ## Controls
 #### Fractals
