@@ -48,7 +48,7 @@ float escape_radius = 1000;
 double zoom_val = 1;
 double sum_of_iterations = 0;
 double time_d = 0;
-bool sszoom = false;
+bool screenshot_zoom = false;
 
 // Fractal limits and offsets.
 Limits current_frac;
@@ -148,7 +148,7 @@ int main()
 
 				// Screenshot session
 				if (event.key.code == Keyboard::Z) {
-					sszoom = true;
+					screenshot_zoom = true;
 				}
 
 				// Toggle System Info
@@ -255,11 +255,11 @@ int main()
 			time_d += 0.05;
 			clock_anim.restart();
 		}
-		if (sszoom) {
+		if (screenshot_zoom) {
 			screenshot(texture);
 			screen_zoom({ 0,0 }, 1 / 1.3, true);
 			if (zoom_val <= 0.5) {
-				sszoom = false;
+				screenshot_zoom = false;
 			}
 		}
 	}
@@ -390,7 +390,7 @@ void screenshot(Texture& texture) {
 	time_t now = time(0);
 	tm ltm;
 	localtime_s(&ltm, &now);
-	if (sszoom) {
+	if (screenshot_zoom) {
 		sprintf_s(buffer1, sizeof(buffer1), "%d", ss_counter++);
 		strftime(buffer2, sizeof(buffer2), "_zoom_%m%d%y%H%M%S.png", &ltm);
 		strcat_s(buffer1, sizeof(buffer1), buffer2);
