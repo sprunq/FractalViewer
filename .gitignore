@@ -7,6 +7,7 @@
 /Pictures/
 /cmake-build-debug/
 *.o
+*.out
 
 
 # User-specific files
