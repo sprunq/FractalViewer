@@ -5,6 +5,9 @@
 
 *.dll
 /Pictures/
+/cmake-build-debug/
+*.o
+
 
 # User-specific files
 *.rsuser

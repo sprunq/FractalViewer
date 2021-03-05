@@ -1,9 +1,13 @@
-#include <stdio.h>
-#include <string>
 #include <SFML/Graphics.hpp>
+#include <cstdio>
+#include <string>
 #include <iostream>
+#include <ctime>
+#include <cstdlib>
+#include <cstring>
+#include <climits>
 #include "ArialFont.h"
-#include <math.h> 
+#include "Fractal.h"
 using namespace std;
 using namespace sf;
 
@@ -12,7 +16,7 @@ Fractals
 	- Num1: Mandelbrot
 	- Num2: Tricorn
 	- Num3: Mandelbrot Tricorn Animation
-	- Num4: Bruning Ship
+	- Num4: Burning Ship
 
 Movement:
 	- W: Up
@@ -22,11 +26,10 @@ Movement:
 	- Hold Middle Mouse Button: Drag
 
 Fractal Controls:
-	- R: Reset
 	- F: Toggle System Info
 	- I: Toggle Dynamic Iterations
 	- Left Click: Increase Iterations
-	- Rigth Click: Decrease Iterations
+	- Right Click: Decrease Iterations
 	- Arrow Left/Right: Change Animation Speed for Mandelbrot-Tricorn Animation
 
 Colors:
@@ -39,56 +42,11 @@ Screenshot:
 	- Z: Zoom out and take Screenshots (for Animations)
 */
 
-// Constants
-const float aspect_ratio = 16.0 / 9.0;
-const int win_width = 1920;
-const int win_height = static_cast<int>(win_width / aspect_ratio);
-
-// UI Settings
-const float zoom_factor = 1.25;
-const float move_factor = 0.05;
-const float screenshot_zoom_fact = 1.0 / 1.2;
-float animation_tick = 0.025;
-bool show_sys_info = true;
-bool zoom_into_center = true;
-bool dynamic_iterations = true;
-
-// Fractal Settings
-float escape_radius = 1000;
-int max_colors = 200;
-const int init_iterations = 32;
-
-// Don't touch
-int max_iterations = init_iterations;
-double zoom_val = 1;
-double time_d = 0;
-
-// Declarations
-struct FractalSettings {
-	double min_real_x;
-	double max_real_x;
-	double min_im_y;
-	double max_im_y;
-	double offset_re_x;
-	double offset_im_y;
-	float scale;
+struct WindowSettings{
+    float aspect_ratio;
+    int width;
+    int height;
 };
-
-enum class FractalTypes {
-	mandelbrot = 1,
-	tricorn,
-	mandelbrot_tricorn_animation,
-	burning_ship,
-	tree
-} fractal_type;
-
-// Fractal limits and offsets.
-// min_re, max_re, min_im, max_im, offset_re, offset_im, scale 
-FractalSettings current_frac;
-FractalSettings limit_mandelbrot = { -2.5, 1.0, -1.0, 1.0 , 0.5, 0, 1.5 };
-FractalSettings limit_tricorn = { -2.5, 1.0, -1.0, 1.0 , 1.5, 0, 2 };
-FractalSettings limit_mandelbrot_tricorn_animation = { -2.5, 1.0, -1.0, 0.75 , 1, 0, 2 };
-FractalSettings limit_burning_ship = { -2.5, 1.0, -1.0, 1.0 , 1, -0.75, 1.5 };
 
 // Color palettes
 vector<Color> gradient_ultra_fractal{
@@ -101,40 +59,77 @@ vector<Color> gradient_ultra_fractal{
 };
 
 // Functions
-void renderFractal(Image& img, vector<Color> colors);
-void setFractal(FractalTypes frac_type);
-void screenZoom(tuple<int, int> cursor_pos, double factor, bool center_zoom);
-void screenshot(Texture& texture, bool is_animation);
+void screenZoom(WindowSettings windowSettings, Fractal* fractal, tuple<int, int> cursorPos, double factor, bool zoomCenter);
+void screenshot(Texture& texture, bool isAnimation);
 void saveColors(vector<Color>& colors);
 vector<Color> getRandomColors(int amount);
-Color linear_interpolation(const Color& v, const Color& u, double a);
 
-int main()
+int main(int argc, char *argv[])
 {
-	srand(time(NULL));
-	setFractal(FractalTypes::mandelbrot);
+    float aspect_ratio = 0;
+    int win_width = 0;
+    int win_height = 0;
+    if (argc == 2) {
+        errno = 0;
+        char *p;
+        long conv = strtol(argv[1], &p, 10);
+        if (errno != 0 || *p != '\0' || conv > INT_MAX || conv < INT_MIN) {
+            cout << "Input Error" << endl;
+            exit(EXIT_FAILURE);
+        }
+        else{
+            aspect_ratio = 16.0 / 9.0;
+            win_width = conv;
+            win_height = static_cast<int>(win_width / aspect_ratio);
+        }
+    }
+    else{
+        aspect_ratio = 16.0 / 9.0;
+        win_width = 640;
+        win_height = static_cast<int>(win_width / aspect_ratio);
+    }
 
-	// Colors are saved in another vector so you get the same colors if you change the amount. 
-	vector<Color> colors = gradient_ultra_fractal;
-	vector<Color> random_colors = colors;
+    // UI Settings
+    const float zoom_factor = 1.25;
+    const float move_factor = 0.05;
+    const float screenshot_zoom_fact = 1.0 / 1.2;
+    float animation_tick = 0.025;
+    bool show_sys_info = true;
+    bool zoom_into_center = true;
+    bool dynamic_iterations = true;
+
+    // Fractal Settings
+    float escape_radius = 1000;
+    int max_colors = 2000;
+    vector<Color> colors = gradient_ultra_fractal;
+
+    // Don't touch
+    double zoom_val = 1;
+    double time_d = 0;
+    bool screenshot_zoom = false;
+    bool dragging = false;
+    srand(time(nullptr));
+    WindowSettings window_size = {aspect_ratio, win_width, win_height};
+    Image img;
+    Texture texture;
+    Sprite sprite;
+    Font font;
+    Text text;
+    Clock clock;
+    Clock clock_anim;
+    Event event{};
+    Vector2i prev_drag;
+
+	// Colors are saved in another vector so you get the same colors if you change the amount.
+	vector<Color> extra_random_colors = colors;
 	vector<Color> temp = getRandomColors(max_colors - colors.size());
-	random_colors.insert(random_colors.end(), temp.begin(), temp.end());
+	extra_random_colors.insert(extra_random_colors.end(), temp.begin(), temp.end());
 	temp.clear();
-	bool screenshot_zoom = false;
-	bool dragging = false;
 
-	Image img;
-	Texture texture;
-	Sprite sprite;
-	Font font;
-	Text text;
-	Clock clock;
-	Clock clock_anim;
-	Event event;
-	Vector2i prev_drag;
-
-	RenderWindow window(VideoMode(win_width, win_height), "Mandelbrot Set");
-	img.create(win_width, win_height);
+	// Create Window, Font and Fractal
+	RenderWindow window(VideoMode(window_size.width, window_size.height), "Fractal Viewer");
+	img.create(window_size.width, window_size.height);
+    auto fractal = new Fractal(img, dynamic_iterations, escape_radius);
 
 	if (!font.loadFromMemory(&arial_ttf, arial_ttf_len))
 	{
@@ -145,6 +140,7 @@ int main()
 	text.setCharacterSize(18);
 	text.setFillColor(Color::White);
 
+	// Game Loop
 	while (window.isOpen()) {
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed) {
@@ -152,140 +148,156 @@ int main()
 			}
 
 			if (event.type == Event::KeyPressed) {
-				// Moving around with ASWD
-				double width_step = (current_frac.max_real_x - current_frac.min_real_x) * move_factor;
-				double height_step = (current_frac.max_im_y - current_frac.min_im_y) * move_factor;
-				if (event.key.code == Keyboard::A) {
-					current_frac.min_real_x -= width_step;
-					current_frac.max_real_x -= width_step;
-				}
-				else if (event.key.code == Keyboard::D) {
-					current_frac.min_real_x += width_step;
-					current_frac.max_real_x += width_step;
-				}
-				else if (event.key.code == Keyboard::W) {
-					current_frac.min_im_y -= height_step;
-					current_frac.max_im_y -= height_step;
-				}
-				else if (event.key.code == Keyboard::S) {
-					current_frac.min_im_y += height_step;
-					current_frac.max_im_y += height_step;
-				}
-
-				// Get Random Colors
-				if (event.key.code == Keyboard::Space) {
-					colors = getRandomColors(colors.size());
-				}
-
-				// Print Colors to console
-				if (event.key.code == Keyboard::Enter) {
-					saveColors(colors);
-				}
-
-				// Reset
-				if (event.key.code == Keyboard::R) {
-					max_iterations = init_iterations;
-					zoom_val = 1;
-					setFractal(fractal_type);
-				}
-
-				// Screenshot
-				if (event.key.code == Keyboard::H) {
-					screenshot(texture, false);
-				}
-
-				// Screenshot session
-				if (event.key.code == Keyboard::Z) {
-					screenshot_zoom = true;
-				}
-
-				// Toggle System Info
-				if (event.key.code == Keyboard::F) {
-					show_sys_info = !show_sys_info;
-					text.setString("");
-				}
-
-				// Toggle Dynamic Iterations
-				if (event.key.code == Keyboard::I) {
-					dynamic_iterations = !dynamic_iterations;
-					max_iterations = init_iterations;
-				}
-
-				// Switch between different fractals and reset view
-				if (event.key.code == Keyboard::Num1) {
-					setFractal(FractalTypes::mandelbrot);
-				}
-				else if (event.key.code == Keyboard::Num2) {
-					setFractal(FractalTypes::tricorn);
-				}
-				else if (event.key.code == Keyboard::Num3) {
-					setFractal(FractalTypes::mandelbrot_tricorn_animation);
-				}
-				else if (event.key.code == Keyboard::Num4) {
-					setFractal(FractalTypes::burning_ship);
-				}
-
-
-				// Up, Down: Amount of colors
-				// Left, Right: Animation speed
-				if (event.key.code == Keyboard::Up) {
-					if (colors.size() < random_colors.size())
-						colors.push_back(random_colors.at(colors.size()));
-				}
-				else if (event.key.code == Keyboard::Down) {
-					if (colors.size() > 1) {
-						colors.pop_back();
-					}
-					else {
-						colors.push_back(random_colors.at(colors.size()));
-					}
-				}
-				else if (event.key.code == Keyboard::Left) {
-					animation_tick *= 2;
-				}
-				else if (event.key.code == Keyboard::Right) {
-					animation_tick *= 0.5;
-					if (animation_tick <= 0)
-						animation_tick = 0.1;
-				}
+				// Moving around with WASD
+				bool changed_frac_settings = false;
+				auto p_fractal = fractal->getFracSettings();
+				double width_step = (p_fractal.max_real_x - p_fractal.min_real_x) * move_factor;
+				double height_step = (p_fractal.max_im_y - p_fractal.min_im_y) * move_factor;
+                switch (event.key.code) {
+				    case Keyboard::W:
+				        // Move Up
+                        p_fractal.min_im_y -= height_step;
+                        p_fractal.max_im_y -= height_step;
+                        changed_frac_settings = true;
+				        break;
+                    case Keyboard::A:
+                        // Move Left
+                        p_fractal.min_real_x -= width_step;
+                        p_fractal.max_real_x -= width_step;
+                        changed_frac_settings = true;
+                        break;
+                    case Keyboard::S:
+                        // Move Down
+                        p_fractal.min_im_y += height_step;
+                        p_fractal.max_im_y += height_step;
+                        changed_frac_settings = true;
+                        break;
+                    case Keyboard::D:
+                        // Move Right
+                        p_fractal.min_real_x += width_step;
+                        p_fractal.max_real_x += width_step;
+                        changed_frac_settings = true;
+                        break;
+                    case Keyboard::Num1:
+                        // Change to Mandelbrot
+                        fractal->setFractalType(FractalTypes::mandelbrot);
+                        zoom_val = 1;
+                        break;
+                    case Keyboard::Num2:
+                        // Change to Tricorn
+                        fractal->setFractalType(FractalTypes::tricorn);
+                        zoom_val = 1;
+                        break;
+                    case Keyboard::Num3:
+                        // Change to Animation
+                        fractal->setFractalType(FractalTypes::mandelbrot_tricorn_animation);
+                        zoom_val = 1;
+                        break;
+                    case Keyboard::Num4:
+                        // Change to Burning Ship
+                        fractal->setFractalType(FractalTypes::burning_ship);
+                        zoom_val = 1;
+                        break;
+                    case Keyboard::Up:
+                        // Increase Color Count
+                        if (colors.size() < extra_random_colors.size())
+                            colors.push_back(extra_random_colors.at(colors.size()));
+                        break;
+                    case Keyboard::Down:
+                        // Decrease Color Count
+                        if (colors.size() > 1) {
+                            colors.pop_back();
+                        }
+                        else {
+                            colors.push_back(extra_random_colors.at(colors.size()));
+                        }
+                        break;
+                    case Keyboard::Left:
+                        // Slow Down Animation
+                        animation_tick *= 2;
+                        break;
+                    case Keyboard::Right:
+                        // Speed Up Animation
+                        animation_tick *= 0.5;
+                        if (animation_tick <= 0)
+                            animation_tick = 0.1;
+                        break;
+                    case Keyboard::Space:
+                        // Create New Random Colors
+                        colors = getRandomColors(colors.size());
+                        break;
+                    case Keyboard::Enter:
+                        // Print Current Colors
+                        saveColors(colors);
+                        break;
+                    case Keyboard::H:
+                        // Screenshot Screen
+                        screenshot(texture, false);
+                        break;
+                    case Keyboard::Z:
+                        // Screenshot Animation While Zooming Out
+                        screenshot_zoom = true;
+                        break;
+                    case Keyboard::F:
+                        // Toggle Information Display
+                        show_sys_info = !show_sys_info;
+                        text.setString("");
+                        break;
+                    case Keyboard::I:
+                        // Toggle Iteration Mode (Dynamic - Manual)
+                        fractal->toggleIterationMode();
+                        break;
+                    default:
+                        break;
+                }
+                if (changed_frac_settings)
+                    fractal->setFracSettings(p_fractal);
 			}
 
 			if (event.type == Event::MouseButtonPressed) {
-				// Iterations
-				if (event.mouseButton.button == Mouse::Left) {
-					max_iterations *= 2;
-
-				}
-				else if (event.mouseButton.button == Mouse::Right) {
-					max_iterations *= 0.5;
-					if (max_iterations < 1)
-						max_iterations = 1;
-				}
-				// Dragging
-				else if (event.mouseButton.button == Mouse::Middle) {
-					dragging = true;
-					prev_drag = { event.mouseButton.x, event.mouseButton.y };
-				}
+				// Manually Change Iteration Level
+                int iterations = fractal->getIterations();
+                switch (event.mouseButton.button) {
+				    case Mouse::Left:
+				        // Increase Iterations
+                        fractal->setIterations(iterations*2);
+				        break;
+                    case Mouse::Right:
+                        // Decrease Iterations
+                        fractal->setIterations(iterations*0.5);
+                        if (iterations < 1)
+                            fractal->setIterations(1);
+                        break;
+                    case Mouse::Middle:
+                        // Begin Dragging
+                        dragging = true;
+                        prev_drag = { event.mouseButton.x, event.mouseButton.y };
+                        break;
+                    default:
+                        break;
+                }
 			}
 
 			if (event.type == Event::MouseButtonReleased) {
-				// Dragging
+				// End Dragging
 				if (event.mouseButton.button == Mouse::Middle) {
 					dragging = false;
 				}
 			}
 			if (event.type == sf::Event::MouseMoved) {
+			    // Dragging Action
 				if (dragging) {
+                    auto p_fractal = fractal->getFracSettings();
 					double drag_factor = 1 / (double(win_height)*aspect_ratio);
 					Vector2i curDrag = { event.mouseMove.x, event.mouseMove.y };
-					double width_step = (current_frac.max_real_x - current_frac.min_real_x) * drag_factor;
-					double height_step = (current_frac.max_im_y - current_frac.min_im_y) * drag_factor;
-					double re_x_movement = ((double)prev_drag.x - (double)curDrag.x) * width_step;
-					double im_y_movement = ((double)prev_drag.y - (double)curDrag.y) * width_step;
-					current_frac.min_real_x += re_x_movement;
-					current_frac.max_real_x += re_x_movement;
-					current_frac.min_im_y += im_y_movement;
-					current_frac.max_im_y += im_y_movement;
+					double step = (p_fractal.max_real_x - p_fractal.min_real_x) * drag_factor;
+					double re_x_movement = ((double)prev_drag.x - (double)curDrag.x) * step;
+					double im_y_movement = ((double)prev_drag.y - (double)curDrag.y) * step;
+                    p_fractal.min_real_x += re_x_movement;
+                    p_fractal.max_real_x += re_x_movement;
+                    p_fractal.min_im_y += im_y_movement;
+                    p_fractal.max_im_y += im_y_movement;
+                    fractal->setFracSettings(p_fractal);
 					prev_drag = curDrag;
 				}
 			}
@@ -293,34 +305,38 @@ int main()
 			if (event.type == Event::MouseWheelScrolled)
 			{
 				// Zoom
-				if (event.MouseWheelScrolled)
-				{
-					if (event.mouseWheelScroll.wheel == Mouse::VerticalWheel)
-					{
-						if (event.mouseWheelScroll.delta > 0) {
-							screenZoom({ event.mouseWheelScroll.x, event.mouseWheelScroll.y }, zoom_factor, zoom_into_center);
-						}
-						else {
-							screenZoom({ event.mouseWheelScroll.x, event.mouseWheelScroll.y }, 1/zoom_factor, zoom_into_center);
-						}
-					}
+				if (event.mouseWheelScroll.wheel == Mouse::VerticalWheel) {
+				    if (event.mouseWheelScroll.delta > 0) {
+				        screenZoom(window_size, fractal, {event.mouseWheelScroll.x, event.mouseWheelScroll.y}, zoom_factor,
+                                   zoom_into_center);
+				        zoom_val *= zoom_factor;
+				    } else {
+				        screenZoom(window_size, fractal, {event.mouseWheelScroll.x, event.mouseWheelScroll.y}, 1 / zoom_factor,
+                                   zoom_into_center);
+				        zoom_val /= zoom_factor;
+				    }
 				}
 			}
 		}
+
 		window.clear();
-		renderFractal(img, colors);
+		fractal->renderFractal(colors, window_size.width, window_size.height, time_d);
 		texture.loadFromImage(img);
 		sprite.setTexture(texture);
 		window.draw(sprite);
+		int frac_type = fractal->getFractalType();
 		if (show_sys_info) {
 			float time_per_frame = clock.getElapsedTime().asSeconds();
 			clock.restart();
 			char buff[100];
-			snprintf(buff, sizeof(buff), 
+			snprintf(buff, sizeof(buff),
+            "Fractal: %s\n"
 				"Iterations: %d\n"
 				"Zoom: x%2.2lf\n"
-				"Time per frame: %0.5lf", 
-				max_iterations, zoom_val, time_per_frame);
+				"Time per frame: %0.5lf\n",
+				fractal->getName(),
+				fractal->getIterations(), zoom_val,
+				time_per_frame);
 			text.setString(buff);
 		}
 		window.draw(text);
@@ -331,8 +347,10 @@ int main()
 		}
 		if (screenshot_zoom) {
 			screenshot(texture, true);
-			screenZoom({ 0,0 }, screenshot_zoom_fact, true);
-			if (zoom_val <= 0.5) {
+			screenZoom(window_size, fractal, {event.mouseWheelScroll.x, event.mouseWheelScroll.y}, screenshot_zoom_fact,
+                       true);
+            zoom_val *= screenshot_zoom_fact;
+			if (zoom_val <= 1.0) {
 				screenshot_zoom = false;
 			}
 		}
@@ -340,152 +358,60 @@ int main()
 	return 0;
 }
 
-// Renders the Mandelbrot Set onto an image.
-void renderFractal(Image& img, vector<Color> colors) {
-	if (dynamic_iterations) {
-		max_iterations = 50 * pow((log10(win_width / (current_frac.max_im_y - current_frac.min_im_y))), 1.25);
-	}
-#pragma omp parallel for
-	for (int y = 0; y < win_height; y++) {
-		for (int x = 0; x < win_width; x++) {
-			double x0 = current_frac.min_real_x + (current_frac.max_real_x - current_frac.min_real_x) * x / win_width;
-			double y0 = current_frac.min_im_y + (current_frac.max_im_y - current_frac.min_im_y) * y / win_height;
-			double re = 0, im = 0, tmp;
-			int current_iteration = 0;
-			for (current_iteration; current_iteration < max_iterations; current_iteration++) {
-				switch (fractal_type)
-				{
-				case FractalTypes::mandelbrot:
-					tmp = re * re - im * im + x0;
-					im = 2.0 * re * im + y0;
-					re = tmp;
-					break;
-				case FractalTypes::tricorn:
-					tmp = re * re - im * im + x0;
-					im = -2 * re * im + y0;
-					re = tmp;
-					break;
-				case FractalTypes::mandelbrot_tricorn_animation:
-					tmp = re * re - im * im + x0;
-					im = 2.0 * sin(time_d) * re * im + y0;
-					re = tmp;
-					break;
-				case FractalTypes::burning_ship:
-					tmp = re * re - im * im + x0;
-					im = 2.0 * std::abs(re * im) + y0;
-					re = tmp;
-					break;
-				case FractalTypes::tree:
-					re = 1;
-					im = 1;
-					break;
-				}
-				if (re * re + im * im > escape_radius) {
-					break;
-				}
-			}
-
-			// Coloring
-			if (current_iteration == max_iterations)
-				current_iteration = 0;
-			unsigned int max_color = colors.size() - 1;
-			auto color_value = (static_cast<double>(current_iteration) / max_iterations) * max_color;
-			auto i_col = static_cast<unsigned int>(color_value);
-			Color color1 = colors[i_col];
-			Color color2 = colors[min(i_col + 1, max_color)];
-			Color col = linear_interpolation(color1, color2, color_value - i_col);
-			img.setPixel(x, y, Color(col));
-		}
-	}
-}
 // Function zooms into the Mandelbrot set either following the cursor or in the center.
-void screenZoom(tuple<int, int> cursor_pos, double factor, bool zoom_center)
+void screenZoom(WindowSettings windowSettings, Fractal* fractal, tuple<int, int> cursorPos, double factor, bool zoomCenter)
 {
-	zoom_val *= factor;
+    auto p_fractal = fractal->getFracSettings();
 	double zoom_to_x = 0;
 	double zoom_to_y = 0;
-	if (zoom_center) {
-		zoom_to_x = current_frac.min_real_x + (current_frac.max_real_x - current_frac.min_real_x) * (win_width / 2.0) / win_width;
-		zoom_to_y = current_frac.min_im_y + (current_frac.max_im_y - current_frac.min_im_y) * (win_height / 2.0) / win_height;
+	if (zoomCenter) {
+		zoom_to_x = p_fractal.min_real_x + (p_fractal.max_real_x - p_fractal.min_real_x) * (windowSettings.width / 2.0) / windowSettings.width;
+		zoom_to_y = p_fractal.min_im_y + (p_fractal.max_im_y - p_fractal.min_im_y) * (windowSettings.height / 2.0) / windowSettings.height;
 		}
 	else {
-		zoom_to_x = current_frac.min_real_x + (current_frac.max_real_x - current_frac.min_real_x) * get<0>(cursor_pos) / win_width;
-		zoom_to_y = current_frac.min_im_y + (current_frac.max_im_y - current_frac.min_im_y) * get<1>(cursor_pos) / win_height;
+		zoom_to_x = p_fractal.min_real_x + (p_fractal.max_real_x - p_fractal.min_real_x) * get<0>(cursorPos) / windowSettings.width;
+		zoom_to_y = p_fractal.min_im_y + (p_fractal.max_im_y - p_fractal.min_im_y) * get<1>(cursorPos) / windowSettings.height;
 	}
 
-	double new_min_real = zoom_to_x - (current_frac.max_real_x - current_frac.min_real_x) / 2 / factor;
-	current_frac.max_real_x = zoom_to_x + (current_frac.max_real_x - current_frac.min_real_x) / 2 / factor;
-	current_frac.min_real_x = new_min_real;
+	double new_min_real = zoom_to_x - (p_fractal.max_real_x - p_fractal.min_real_x) / 2 / factor;
+    p_fractal.max_real_x = zoom_to_x + (p_fractal.max_real_x - p_fractal.min_real_x) / 2 / factor;
+    p_fractal.min_real_x = new_min_real;
 
-	double new_min_im = zoom_to_y - (current_frac.max_im_y - current_frac.min_im_y) / 2 / factor;
-	current_frac.max_im_y = zoom_to_y + (current_frac.max_im_y - current_frac.min_im_y) / 2 / factor;
-	current_frac.min_im_y = new_min_im;
+	double new_min_im = zoom_to_y - (p_fractal.max_im_y - p_fractal.min_im_y) / 2 / factor;
+    p_fractal.max_im_y = zoom_to_y + (p_fractal.max_im_y - p_fractal.min_im_y) / 2 / factor;
+    p_fractal.min_im_y = new_min_im;
+
+    fractal->setFracSettings(p_fractal);
 }
 
-// Set a new fractal and reset the view.
-void setFractal(FractalTypes new_frac_type)
-{
-	FractalSettings limits_frac = { 0,0,0,0,0,0 };
-	switch (new_frac_type)
-	{
-	case FractalTypes::mandelbrot:
-		limits_frac = limit_mandelbrot;
-		break;
-	case FractalTypes::tricorn:
-		limits_frac = limit_tricorn;
-		break;
-	case FractalTypes::mandelbrot_tricorn_animation:
-		limits_frac = limit_mandelbrot_tricorn_animation;
-		break;
-	case FractalTypes::burning_ship:
-		limits_frac = limit_burning_ship;
-		break;
-	default:
-		break;
-	}
-	fractal_type = new_frac_type;
-	max_iterations = init_iterations;
-	zoom_val = 1;
-	time_d = 0;
-	current_frac.min_real_x = limits_frac.min_real_x * limits_frac.scale + limits_frac.offset_re_x;
-	current_frac.max_real_x = limits_frac.max_real_x * limits_frac.scale + limits_frac.offset_re_x;
-	current_frac.min_im_y = limits_frac.min_im_y * limits_frac.scale + limits_frac.offset_im_y;
-	current_frac.max_im_y = limits_frac.max_im_y * limits_frac.scale + limits_frac.offset_im_y;
-}
 
 // Screenshots the current image. Will save the file with a prefix if it is part of a zoom.
-void screenshot(Texture& texture, bool is_animation) {
+void screenshot(Texture& texture, bool isAnimation) {
 	static int ss_counter = 0;
 	char buffer1[128];
 	char buffer2[128];
-	time_t now = time(0);
-	tm ltm;
-	localtime_s(&ltm, &now);
-	if (is_animation) {
-		sprintf_s(buffer1, sizeof(buffer1), "../Pictures/%d", ss_counter++);
-		strftime(buffer2, sizeof(buffer2), "_zoom_%m%d%y%H%M%S.png", &ltm);
-		strcat_s(buffer1, sizeof(buffer1), buffer2);
+	time_t rawtime;
+	struct tm* timeinfo;
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	if (isAnimation) {
+		sprintf(buffer1, "../Images/Animations/%d", ss_counter++);
+        strftime(buffer2, sizeof(buffer2), "_zoom_%m%d%y%H%M%S.png", timeinfo);
+		strcat(buffer1, buffer2);
 		texture.copyToImage().saveToFile(buffer1);
 	}
 	else {
-		strftime(buffer2, sizeof(buffer2), "../Pictures/screenshot_%m%d%y%H%M%S.png", &ltm);
+		strftime(buffer2, sizeof(buffer2), "../Images/Screenshots/ss_%m%d%y%H%M%S.png", timeinfo);
 		texture.copyToImage().saveToFile(buffer2);
 	}
-}
-
-// Interpolates two colors.
-Color linear_interpolation(const Color& col1, const Color& col2, double t)
-{
-	auto const b = 1 - t;
-	return Color(b * col1.r + t * col2.r, b * col1.g + t * col2.g, b * col1.b + t * col2.b);
 }
 
 // Returns an array of n random colors.
 vector<Color> getRandomColors(int amount) {
 	vector<Color> temp;
-	temp.push_back(Color(0, 0, 0));
+	temp.emplace_back(0, 0, 0);
 	for (int i = 0; i < amount - 1; i++) {
-		temp.push_back(Color(rand() % 255, rand() % 255, rand() % 255));
+		temp.emplace_back(rand() % 255, rand() % 255, rand() % 255);
 	}
 	return temp;
 }
@@ -494,6 +420,6 @@ vector<Color> getRandomColors(int amount) {
 void saveColors(vector<Color>& colors) {
 	cout << "vector<Color> saved_grad{" << endl;
 	for (auto col : colors)
-		cout << "\t{" << (int)col.r << ", " << (int)col.g << ", " << (int)col.b << ", " << " " << endl;
+		cout << "\t{" << (int)col.r << ", " << (int)col.g << ", " << (int)col.b << " } " << endl;
 	cout << "};" << endl;
 }
