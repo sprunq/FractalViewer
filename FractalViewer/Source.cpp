@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
     }
 
     // UI Settings
+    const int highResScreenshotSize = 6000;
     const float zoom_factor = 1.25;
     const float move_factor = 0.05;
     const float screenshot_zoom_fact = 1.0 / 1.2;
@@ -245,7 +246,7 @@ int main(int argc, char *argv[])
                         break;
                     case Keyboard::T:
                         // Screenshot Screen
-                        highResolutionScreenshot(fractal, colors, 200);
+                        highResolutionScreenshot(fractal, colors, highResScreenshotSize);
                         break;
                     case Keyboard::Z:
                         // Screenshot Animation While Zooming Out
@@ -459,7 +460,7 @@ vector<Color> getRandomColors(int amount) {
 // Prints the currently selected colors to the console.
 void saveColors(vector<Color>& colors) {
 	cout << "vector<Color> saved_grad{" << endl;
-	for (auto col : colors)
+	for (Color col : colors)
 		cout << "\t{" << (int)col.r << ", " << (int)col.g << ", " << (int)col.b << " } " << endl;
 	cout << "};" << endl;
 }

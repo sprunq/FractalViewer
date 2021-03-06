@@ -1,6 +1,7 @@
 #include "Fractal.h"
 #include <iostream>
 
+
 Fractal::Fractal(Image* img, bool dynamicIterations, float escapeRadius) {
     this->img = img;
     this->dynamic_iterations = dynamicIterations;
