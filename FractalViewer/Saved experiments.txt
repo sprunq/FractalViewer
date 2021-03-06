@@ -1,0 +1,9 @@
+// 1:
+tmp = re * re - im * im + cos(x0);
+im = 2.0 * fmod(re,2) * re*re*im + sin(y0);
+re = fmod(tmp,2);
+
+// 2: Cool looking circle
+tmp = re * re - im * im + cos(x0);
+im = fmod(tmp * im,2) + cos(y0);
+re = fmod(cos(tmp*re)*4,2);

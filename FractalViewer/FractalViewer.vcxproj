@@ -156,9 +156,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ArialFont.h" />
+    <ClInclude Include="Fractal.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Fractal.cpp" />
     <ClCompile Include="Source.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Saved experiments.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

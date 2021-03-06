@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <SFML/Graphics.hpp>
 #include <cstdio>
 #include <string>
@@ -61,8 +62,11 @@ vector<Color> gradient_ultra_fractal{
 // Functions
 void screenZoom(WindowSettings windowSettings, Fractal* fractal, tuple<int, int> cursorPos, double factor, bool zoomCenter);
 void screenshot(Texture& texture, bool isAnimation);
+void highResolutionScreenshot(Fractal* old_fractal, vector<Color>& cols, int winWidth);
 void saveColors(vector<Color>& colors);
+struct tm* getLocalTimeInfo();
 vector<Color> getRandomColors(int amount);
+
 
 int main(int argc, char *argv[])
 {
@@ -85,7 +89,7 @@ int main(int argc, char *argv[])
     }
     else{
         aspect_ratio = 16.0 / 9.0;
-        win_width = 640;
+        win_width = 1024;
         win_height = static_cast<int>(win_width / aspect_ratio);
     }
 
@@ -129,7 +133,7 @@ int main(int argc, char *argv[])
 	// Create Window, Font and Fractal
 	RenderWindow window(VideoMode(window_size.width, window_size.height), "Fractal Viewer");
 	img.create(window_size.width, window_size.height);
-    auto fractal = new Fractal(img, dynamic_iterations, escape_radius);
+    auto fractal = new Fractal(&img, dynamic_iterations, escape_radius);
 
 	if (!font.loadFromMemory(&arial_ttf, arial_ttf_len))
 	{
@@ -198,6 +202,11 @@ int main(int argc, char *argv[])
                         fractal->setFractalType(FractalTypes::burning_ship);
                         zoom_val = 1;
                         break;
+                    case Keyboard::Num5:
+                        // Change to Burning Ship
+                        fractal->setFractalType(FractalTypes::experiment);
+                        zoom_val = 1;
+                        break;
                     case Keyboard::Up:
                         // Increase Color Count
                         if (colors.size() < extra_random_colors.size())
@@ -233,6 +242,10 @@ int main(int argc, char *argv[])
                     case Keyboard::H:
                         // Screenshot Screen
                         screenshot(texture, false);
+                        break;
+                    case Keyboard::T:
+                        // Screenshot Screen
+                        highResolutionScreenshot(fractal, colors, 200);
                         break;
                     case Keyboard::Z:
                         // Screenshot Animation While Zooming Out
@@ -324,7 +337,7 @@ int main(int argc, char *argv[])
 		texture.loadFromImage(img);
 		sprite.setTexture(texture);
 		window.draw(sprite);
-		int frac_type = fractal->getFractalType();
+		int frac_type = (int)fractal->getFractalType();
 		if (show_sys_info) {
 			float time_per_frame = clock.getElapsedTime().asSeconds();
 			clock.restart();
@@ -384,26 +397,53 @@ void screenZoom(WindowSettings windowSettings, Fractal* fractal, tuple<int, int>
     fractal->setFracSettings(p_fractal);
 }
 
+struct tm* getLocalTimeInfo() {
+    time_t rawtime;
+    struct tm* timeinfo;
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    return timeinfo;
+}
 
 // Screenshots the current image. Will save the file with a prefix if it is part of a zoom.
 void screenshot(Texture& texture, bool isAnimation) {
-	static int ss_counter = 0;
-	char buffer1[128];
-	char buffer2[128];
-	time_t rawtime;
-	struct tm* timeinfo;
-	time(&rawtime);
-	timeinfo = localtime(&rawtime);
-	if (isAnimation) {
-		sprintf(buffer1, "../Images/Animations/%d", ss_counter++);
-        strftime(buffer2, sizeof(buffer2), "_zoom_%m%d%y%H%M%S.png", timeinfo);
-		strcat(buffer1, buffer2);
-		texture.copyToImage().saveToFile(buffer1);
-	}
-	else {
-		strftime(buffer2, sizeof(buffer2), "../Images/Screenshots/ss_%m%d%y%H%M%S.png", timeinfo);
-		texture.copyToImage().saveToFile(buffer2);
-	}
+    static int ss_counter = 0;
+    char buffer[128];
+    char buffer1[128];
+    if (isAnimation) {
+        sprintf(buffer, "../Images/Animations/%d", ss_counter++);
+        strftime(buffer1, sizeof(buffer1), "_zoom_%m%d%y%H%M%S.png", getLocalTimeInfo());
+        strcat(buffer, buffer1);
+    }
+    else {
+        strftime(buffer, sizeof(buffer), "../Images/Screenshots/ss_%m%d%y%H%M%S.png", getLocalTimeInfo());
+    }
+    texture.copyToImage().saveToFile(buffer);
+}
+
+// Makes a high resolution screenshot of the current view
+void highResolutionScreenshot(Fractal* mainFractal, vector<Color>& cols, int winWidth) {
+    float aspect_ratio = 16.0 / 9.0;
+    int width = winWidth;
+    int height = static_cast<int>(width / aspect_ratio);
+
+    Image local_img;
+    Texture local_txt;
+    Sprite local_sprite;
+    RenderWindow local_window(VideoMode(width, height), "HR Screenshot");
+    Fractal local_fractal = *mainFractal;
+
+    local_img.create(width, height);
+    local_fractal.setImage(&local_img);
+    local_fractal.renderFractal(cols, width, height, 0);
+    local_txt.loadFromImage(local_img);
+    local_sprite.setTexture(local_txt);
+    local_window.draw(local_sprite);
+    local_window.display();
+
+    char buffer[128];
+    strftime(buffer, sizeof(buffer), "../Images/Screenshots/high_res_ss_%m%d%y%H%M%S.png", getLocalTimeInfo());
+    local_txt.copyToImage().saveToFile(buffer);
 }
 
 // Returns an array of n random colors.

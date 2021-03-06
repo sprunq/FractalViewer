@@ -1,7 +1,8 @@
 #include "Fractal.h"
+#include <iostream>
 
-Fractal::Fractal(Image &img, bool dynamicIterations, float escapeRadius) {
-    this->img = &img;
+Fractal::Fractal(Image* img, bool dynamicIterations, float escapeRadius) {
+    this->img = img;
     this->dynamic_iterations = dynamicIterations;
     this->max_iterations = 32;
     this->escape_radius = escapeRadius;
@@ -18,12 +19,12 @@ int Fractal::getIterations() const {
     return max_iterations;
 }
 
-int Fractal::getFractalType() {
-    return (int)this->fractal_type;
+FractalTypes Fractal::getFractalType() {
+    return this->fractal_type;
 }
 
 const char *Fractal::getName() {
-    int item = this->getFractalType();
+    int item = (int)this->getFractalType();
     return this->FractalTypesNames[item-1];
 }
 // Set a new fractal and reset the view.
@@ -45,6 +46,7 @@ void Fractal::setFractalType(FractalTypes newFracType)
             limits_frac = limit_burning_ship;
             break;
         default:
+            limits_frac = { -2.5, 1.0, -1.0, 1.0 , 0, 0, 1.5 };
             break;
     }
     this->fractal_type = newFracType;
@@ -75,6 +77,11 @@ FractalSettings Fractal::getFracSettings() const {
 
 void Fractal::setFracSettings(FractalSettings newSettings) {
     this->current_frac_settings = newSettings;
+}
+
+void Fractal::setImage(Image* newImage)
+{
+    this->img = newImage;
 }
 
 // Renders The Fractal Using OpenMp
@@ -112,8 +119,13 @@ void Fractal::renderFractal(vector<Color> colors, int width, int height, double 
                         im = 2.0 * std::abs(re * im) + y0;
                         re = tmp;
                         break;
+                    case FractalTypes::experiment:
+                        tmp = re * re - im * im + cos(x0);
+                        im = fmod(tmp * im,2) + cos(y0);
+                        re = fmod(cos(tmp*re)*4,2);
+                        break;
                 }
-                if (re * re + im * im > this->escape_radius) {
+                if (re * re + im * im > 4) {
                     break;
                 }
             }

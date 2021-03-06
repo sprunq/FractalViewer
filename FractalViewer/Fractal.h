@@ -12,7 +12,8 @@ enum class FractalTypes {
     mandelbrot = 1,
     tricorn,
     mandelbrot_tricorn_animation,
-    burning_ship
+    burning_ship,
+    experiment
 };
 
 struct FractalSettings {
@@ -26,7 +27,7 @@ struct FractalSettings {
 };
 
 class Fractal {
-    const char * FractalTypesNames[4] = {"Mandelbrot", "Tricorn", "Ma-Tri Animation", "Burning Ship"};
+    const char * FractalTypesNames[5] = {"Mandelbrot", "Tricorn", "Ma-Tri Animation", "Burning Ship", "Experiment"};
     FractalSettings limit_mandelbrot = { -2.5, 1.0, -1.0, 1.0 , 0.5, 0, 1.5 };
     FractalSettings limit_tricorn = { -2.5, 1.0, -1.0, 1.0 , 1.5, 0, 2 };
     FractalSettings limit_mandelbrot_tricorn_animation = { -2.5, 1.0, -1.0, 0.75 , 1, 0, 2 };
@@ -40,15 +41,16 @@ class Fractal {
     static Color linearInterpolation(const Color& col1, const Color& col2, double t);
 
 public:
-    Fractal(Image& img, bool dynamicIterations, float escapeRadius);
+    Fractal(Image* img, bool dynamicIterations, float escapeRadius);
     ~Fractal();
     int getIterations() const;
     void setIterations(int amount);
-    int getFractalType();
+    FractalTypes getFractalType();
     void setFractalType(FractalTypes newFracType);
     const char* getName();
     FractalSettings getFracSettings() const;
     void setFracSettings(FractalSettings newSettings);
+    void setImage(Image *newImage);
     void toggleIterationMode();
     void renderFractal(vector<Color> colors, int width, int height, double time_delta);
 };
