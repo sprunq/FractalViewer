@@ -6,9 +6,12 @@
 *.dll
 /Images/Screenshots
 /Images/Animations
+/Images/tmp
 /cmake-build-debug/
 *.o
 *.out
+*.py
+*.mp4
 
 
 # User-specific files

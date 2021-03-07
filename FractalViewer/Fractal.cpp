@@ -10,7 +10,8 @@ Fractal::Fractal(Image* img, bool dynamicIterations, float escapeRadius) {
     setFractalType(FractalTypes::mandelbrot);
 }
 
-Fractal::~Fractal() = default;
+Fractal::~Fractal() {
+}
 
 void Fractal::setIterations(int amount) {
     this->max_iterations = amount;

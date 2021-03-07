@@ -44,7 +44,6 @@ Screenshot:
 */
 
 struct WindowSettings{
-    float aspect_ratio;
     int width;
     int height;
 };
@@ -62,7 +61,7 @@ vector<Color> gradient_ultra_fractal{
 // Functions
 void screenZoom(WindowSettings windowSettings, Fractal* fractal, tuple<int, int> cursorPos, double factor, bool zoomCenter);
 void screenshot(Texture& texture, bool isAnimation);
-void highResolutionScreenshot(Fractal* old_fractal, vector<Color>& cols, int winWidth);
+void highResolutionScreenshot(Fractal* old_fractal, vector<Color>& cols, int winWidth, float aspectRatio);
 void saveColors(vector<Color>& colors);
 struct tm* getLocalTimeInfo();
 vector<Color> getRandomColors(int amount);
@@ -70,7 +69,7 @@ vector<Color> getRandomColors(int amount);
 
 int main(int argc, char *argv[])
 {
-    float aspect_ratio = 0;
+    float aspect_ratio = 16.0 / 9.0;
     int win_width = 0;
     int win_height = 0;
     if (argc == 2) {
@@ -82,14 +81,12 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         else{
-            aspect_ratio = 16.0 / 9.0;
             win_width = conv;
             win_height = static_cast<int>(win_width / aspect_ratio);
         }
     }
     else{
-        aspect_ratio = 16.0 / 9.0;
-        win_width = 1024;
+        win_width = 2560;
         win_height = static_cast<int>(win_width / aspect_ratio);
     }
 
@@ -97,7 +94,7 @@ int main(int argc, char *argv[])
     const int highResScreenshotSize = 6000;
     const float zoom_factor = 1.25;
     const float move_factor = 0.05;
-    const float screenshot_zoom_fact = 1.0 / 1.2;
+    const float screenshot_zoom_fact = 1.0 / 1.05;
     float animation_tick = 0.025;
     bool show_sys_info = true;
     bool zoom_into_center = true;
@@ -114,7 +111,7 @@ int main(int argc, char *argv[])
     bool screenshot_zoom = false;
     bool dragging = false;
     srand(time(nullptr));
-    WindowSettings window_size = {aspect_ratio, win_width, win_height};
+    WindowSettings window_size = {win_width, win_height};
     Image img;
     Texture texture;
     Sprite sprite;
@@ -246,7 +243,7 @@ int main(int argc, char *argv[])
                         break;
                     case Keyboard::T:
                         // Screenshot Screen
-                        highResolutionScreenshot(fractal, colors, highResScreenshotSize);
+                        highResolutionScreenshot(fractal, colors, highResScreenshotSize, aspect_ratio);
                         break;
                     case Keyboard::Z:
                         // Screenshot Animation While Zooming Out
@@ -409,27 +406,23 @@ struct tm* getLocalTimeInfo() {
 // Screenshots the current image. Will save the file with a prefix if it is part of a zoom.
 void screenshot(Texture& texture, bool isAnimation) {
     static int ss_counter = 0;
-    char buffer[128];
-    char buffer1[128];
+    char path[128];
     if (isAnimation) {
-        sprintf(buffer, "../Images/Animations/%d", ss_counter++);
-        strftime(buffer1, sizeof(buffer1), "_zoom_%m%d%y%H%M%S.png", getLocalTimeInfo());
-        strcat(buffer, buffer1);
+        sprintf(path, "../Images/Animations/%d.png", ss_counter++);
     }
     else {
-        strftime(buffer, sizeof(buffer), "../Images/Screenshots/ss_%m%d%y%H%M%S.png", getLocalTimeInfo());
+        strftime(path, sizeof(path), "../Images/Screenshots/ss_%m%d%y%H%M%S.png", getLocalTimeInfo());
     }
-    texture.copyToImage().saveToFile(buffer);
+    texture.copyToImage().saveToFile(path);
 }
 
-// Makes a high resolution screenshot of the current view
-void highResolutionScreenshot(Fractal* mainFractal, vector<Color>& cols, int winWidth) {
-    float aspect_ratio = 16.0 / 9.0;
+// Spawns a new Window with a given resolution, takes a high resoltion screenshot and closes the window.
+void highResolutionScreenshot(Fractal* mainFractal, vector<Color>& cols, int winWidth, float aspectRatio) {
     int width = winWidth;
-    int height = static_cast<int>(width / aspect_ratio);
+    int height = static_cast<int>(width / aspectRatio);
 
     Image local_img;
-    Texture local_txt;
+    Texture local_texture;
     Sprite local_sprite;
     RenderWindow local_window(VideoMode(width, height), "HR Screenshot");
     Fractal local_fractal = *mainFractal;
@@ -437,14 +430,14 @@ void highResolutionScreenshot(Fractal* mainFractal, vector<Color>& cols, int win
     local_img.create(width, height);
     local_fractal.setImage(&local_img);
     local_fractal.renderFractal(cols, width, height, 0);
-    local_txt.loadFromImage(local_img);
-    local_sprite.setTexture(local_txt);
+    local_texture.loadFromImage(local_img);
+    local_sprite.setTexture(local_texture);
     local_window.draw(local_sprite);
     local_window.display();
 
-    char buffer[128];
-    strftime(buffer, sizeof(buffer), "../Images/Screenshots/high_res_ss_%m%d%y%H%M%S.png", getLocalTimeInfo());
-    local_txt.copyToImage().saveToFile(buffer);
+    char path[128];
+    strftime(path, sizeof(path), "../Images/Screenshots/high_res_ss_%m%d%y%H%M%S.png", getLocalTimeInfo());
+    local_texture.copyToImage().saveToFile(path);
 }
 
 // Returns an array of n random colors.
