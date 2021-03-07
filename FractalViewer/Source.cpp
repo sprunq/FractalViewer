@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
         }
     }
     else{
-        win_width = 2560;
+        win_width = 1024;
         win_height = static_cast<int>(win_width / aspect_ratio);
     }
 
