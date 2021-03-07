@@ -8,6 +8,8 @@ A CPU based Fractal viewer with Open MP in C++ and SFML.
 - Burning Ship
 <img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/BurningShip_L.png" alt="Mandelbrot"/>
 <img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/BurningShip_S.png" alt="Mandelbrot"/>
+- Whatever you want
+<img src="https://github.com/sprunq/FractalViewer/blob/master/Images/Pictures/Saved%20%232.png" alt="Experiment"/>
 
 ## Functions:
 - Zoom
@@ -48,4 +50,5 @@ A CPU based Fractal viewer with Open MP in C++ and SFML.
 
 #### Screenshot:
 - H: Single Screenshot
+- T: High Resolution Screenshot (6000x3300 by default)
 - Z: Zoom out and take Screenshots (for Animations)
