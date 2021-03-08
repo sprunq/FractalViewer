@@ -29,10 +29,8 @@ A CPU based Fractal viewer with Open MP in C++ and SFML.
 - Num4: Bruning Ship
 
 #### Movement:
-- W: Up
-- A: Left
-- S: Down
-- D: Right
+- WASD: Up/Down/Left/Right
+- Mouse Wheel: Zoom
 - Hold Middle Mouse Button: Drag
 
 #### Fractal Controls:
