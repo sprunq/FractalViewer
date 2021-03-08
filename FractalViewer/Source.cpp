@@ -12,37 +12,6 @@
 using namespace std;
 using namespace sf;
 
-/*
-Fractals
-	- Num1: Mandelbrot
-	- Num2: Tricorn
-	- Num3: Mandelbrot Tricorn Animation
-	- Num4: Burning Ship
-
-Movement:
-	- W: Up
-	- A: Left
-	- S: Down
-	- D: Right
-	- Hold Middle Mouse Button: Drag
-
-Fractal Controls:
-	- F: Toggle System Info
-	- I: Toggle Dynamic Iterations
-	- Left Click: Increase Iterations
-	- Right Click: Decrease Iterations
-	- Arrow Left/Right: Change Animation Speed for Mandelbrot-Tricorn Animation
-
-Colors:
-	- Arrow Up/Down: Increase/Decrease Color Count 
-	- Space: New Random Colors
-	- Enter: Print Colors to Console
-
-Screenshot:
-	- H: Single Screenshot
-	- Z: Zoom out and take Screenshots (for Animations)
-*/
-
 struct WindowSettings{
     int width;
     int height;
